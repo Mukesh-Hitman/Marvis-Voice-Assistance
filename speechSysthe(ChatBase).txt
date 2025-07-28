@@ -1,0 +1,22 @@
+import { ChatbaseAI } from 'chatbase-ai';  
+import { CommandResult } from '../types';
+
+let chatbaseAI: ChatbaseAI | null = null;
+let model: any = null;
+try {
+  
+  const apiKey = import.meta.env.VITE_CHATBASE_API_KEY;  
+  if (apiKey) {
+   
+    chatbaseAI = new ChatbaseAI(apiKey);  
+    model = chatbaseAI.getGenerativeModel();  
+  }
+} catch (error) {
+  console.warn('Chatbase AI initialization failed:', error);
+}
+
+.env
+
+VITE_CHATBASE_API_KEY=your-chatbase-api-key-here
+
+

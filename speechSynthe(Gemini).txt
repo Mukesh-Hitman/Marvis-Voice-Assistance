@@ -1,0 +1,237 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { CommandResult } from '../types';
+
+// Initialize Gemini AI
+let genAI: GoogleGenerativeAI | null = null;
+let model: any = null;
+try {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (apiKey) {
+    genAI = new GoogleGenerativeAI(apiKey);
+    model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  }
+} catch (error) {
+  console.warn('Gemini AI initialization failed:', error);
+}
+
+// Fallback responses for when AI is unavailable
+const fallbackResponses = [
+  "I can help you with basic tasks like opening apps, telling time, or sharing jokes!",
+  "While my AI is recharging, I can still assist with various commands. Try asking for the time or a joke!",
+  "I'm in energy-saving mode right now, but I can still help you open applications or tell you the time!",
+  "My advanced AI features are taking a break, but I'm still here to help with other tasks!",
+  "Let me assist you with something else - I can open apps, tell time, or share a joke!"
+];
+
+const getFallbackResponse = (): string => {
+  return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+};
+
+const openApplication = (command: string): Promise<CommandResult> => {
+  return new Promise((resolve) => {
+    // Extract the app name from the command
+    const appName = command.replace('open', '').trim().toLowerCase();
+    
+    // Web applications with their URLs
+    const webApps: Record<string, string> = {
+      google: 'https://google.com',
+      chrome: 'https://google.com',
+      youtube: 'https://youtube.com',
+      gmail: 'https://gmail.com',
+      facebook: 'https://facebook.com',
+      twitter: 'https://twitter.com',
+      linkedin: 'https://linkedin.com',
+      github: 'https://github.com',
+      netflix: 'https://netflix.com',
+      amazon: 'https://amazon.com',
+      instagram: 'https://instagram.com',  
+      pinterest: 'https://pinterest.com', 
+      reddit: 'https://reddit.com',  
+      whatsapp: 'https://web.whatsapp.com',  
+      tiktok: 'https://tiktok.com',  
+      dropbox: 'https://dropbox.com',  
+      zoom: 'https://zoom.us',  
+      quora: 'https://quora.com',  
+      slack: 'https://slack.com',  
+      spotify: 'https://spotify.com',  
+      discord: 'https://discord.com',  
+      ebay: 'https://ebay.com',  
+      wikipedia: 'https://wikipedia.org',  
+      stackoverflow: 'https://stackoverflow.com'  
+    };
+
+    // Desktop applications with their protocols
+    const desktopApps: Record<string, string> = {
+      notepad: 'notepad:',
+      calculator: 'calc:',
+      paint: 'mspaint:',
+      wordpad: 'write:',
+      explorer: 'explorer:',
+      settings: 'ms-settings:',
+      control: 'control:',
+      cmd: 'cmd:',
+      terminal: 'cmd:'
+    };
+
+    // Check for web applications first
+    for (const [app, url] of Object.entries(webApps)) {
+      if (appName.includes(app)) {
+        // Use window.open with _blank target and noopener
+        const newWindow = window.open(url, '_blank', 'noopener');
+        if (newWindow) {
+          newWindow.opener = null;
+        }
+        return resolve({
+          type: 'success',
+          message: `Opening ${app} in your browser`
+        });
+      }
+    }
+
+    // Check for desktop applications
+    for (const [app, protocol] of Object.entries(desktopApps)) {
+      if (appName.includes(app)) {
+        try {
+          window.open(protocol);
+          return resolve({
+            type: 'success',
+            message: `Attempting to open ${app}`
+          });
+        } catch (error) {
+          console.error(`Failed to open ${app}:`, error);
+        }
+      }
+    }
+
+    // If no matching application is found
+    resolve({
+      type: 'error',
+      message: `I'm sorry, I don't know how to open "${appName}". Please try a different application.`
+    });
+  });
+};
+
+const getWeather = async (): Promise<CommandResult> => {
+  return {
+    type: 'info',
+    message: "I'm sorry, I can't check the weather right now, but I'm learning how to do that!"
+  };
+};
+
+const getTime = (): Promise<CommandResult> => {
+  const now = new Date();
+  const timeString = now.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true
+  });
+  return Promise.resolve({
+    type: 'success',
+    message: `It's currently ${timeString}`
+  });
+};
+
+const tellJoke = async (): Promise<CommandResult> => {
+  const jokes = [
+    "Why don't programmers like nature? It has too many bugs!",
+    "Why did the JavaScript developer wear glasses? Because he couldn't C#!",
+    "What's a computer's favorite snack? Microchips!",
+    "Why was the math book sad? Because it had too many problems!",
+    "What did the AI say to the other AI? 'Byte me!'",
+    "Why did the functions stop calling each other? Because they had constant arguments!",
+    "What's a developer's favorite tea? Java!",
+    "Why do programmers prefer dark mode? Because light attracts bugs!"
+  ];
+  const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
+  return {
+    type: 'success',
+    message: randomJoke
+  };
+};
+
+const askAI = async (question: string): Promise<CommandResult> => {
+  // Check if the command is an application command first
+  if (question.toLowerCase().includes('open')) {
+    return openApplication(question);
+  }
+
+  if (!model) {
+    return {
+      type: 'info',
+      message: getFallbackResponse()
+    };
+  }
+
+  try {
+    const result = await model.generateContent(question);
+    const response = await result.response;
+    const text = response.text();
+    
+    return {
+      type: 'success',
+      message: text || "I couldn't process that request."
+    };
+  } catch (error: any) {
+    console.error('API error:', error);
+    return {
+      type: 'info',
+      message: getFallbackResponse()
+    };
+  }
+};
+
+const aboutMarvis = (): Promise<CommandResult> => {
+  return Promise.resolve({
+    type: 'success',
+    message: "I'm Marvis, your AI Personal Assistant. I was introduced by Mukesh."
+  });
+};
+
+const whatNext = (): Promise<CommandResult> => {
+  return Promise.resolve({
+    type: 'info',
+    message: "What can we do next?"
+  });
+};
+
+const goodbye = (): Promise<CommandResult> => {
+  return Promise.resolve({
+    type: 'success',
+    message: "Goodbye! Have a great day!"
+  });
+};
+
+export const executeCommand = async (command: string): Promise<CommandResult> => {
+  const lowerCommand = command.toLowerCase();
+  
+  if (lowerCommand.includes('bye')) {
+    return goodbye();
+  }
+  
+  if (lowerCommand.includes('stop')) {
+    return whatNext();
+  }
+  
+  if (lowerCommand.includes('who are you') || lowerCommand.includes('what are you')) {
+    return aboutMarvis();
+  }
+  
+  if (lowerCommand.includes('open')) {
+    return openApplication(lowerCommand);
+  }
+  
+  if (lowerCommand.includes('weather')) {
+    return getWeather();
+  }
+  
+  if (lowerCommand.includes('time')) {
+    return getTime();
+  }
+
+  if (lowerCommand.includes('joke')) {
+    return tellJoke();
+  }
+  
+  // Default to AI response for unknown commands
+  return askAI(command);
+};
